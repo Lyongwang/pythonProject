@@ -2,6 +2,8 @@ import os
 import sys
 import time
 
+# from BeautifulReport import BeautifulReport
+
 
 def invalid_format(start_day):
     try:
