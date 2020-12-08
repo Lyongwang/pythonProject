@@ -6,6 +6,7 @@ import time
 
 import json
 import requests
+import sys
 
 javaFilePath = "./src/main/java/com/github/api/service/"
 packageName = "package com.github.api.service;\n\n"
@@ -15,14 +16,15 @@ author = "Lyongwang"
 email = "liyongwang@yiche.com"
 FILE_TYPE = "MultipartBody.Part"
 logFileName = 'error.log'
-apiListUrlClass = "AppUrls"
-apiServiceClass = "AppService"
+apiVersion = str(10.42)#sys.argv[1]
+apiListUrlClass = "AppUrls" + apiVersion.replace(".", "_")
+apiServiceClass = "AppService" + apiVersion.replace(".", "_")
 
 
 # 写文件
 def writeToFile(fileName, fileContent):
     if not os.path.exists(javaFilePath):
-        os.mkdirs(javaFilePath)
+        os.makedirs(javaFilePath)
     fileName = javaFilePath + fileName + ".java"
     if os.path.exists(fileName):
         os.remove(fileName)
@@ -80,7 +82,6 @@ def parseOneMethod(oneMethod):
     apiDepartment = ""
     apiAuthor = ""
     apiType = ""
-    apiVersionName = ""
     apiParamJson = ""
     if "apiDomainName" in oneMethod:
         apiDomain = oneMethod["apiDomainName"]
@@ -96,8 +97,6 @@ def parseOneMethod(oneMethod):
         apiType = oneMethod["apiRequestType"]
     if "updateTime" in oneMethod:
         apiCreatetime = oneMethod["updateTime"]
-    if "version" in oneMethod:
-        apiVersionName = oneMethod["version"]
     if "apiParams" in oneMethod:
         apiParamJson = oneMethod["apiParams"]
     methodUrl: str = (apiDomain + apiUrl).replace("http:", "https:")
@@ -105,7 +104,7 @@ def parseOneMethod(oneMethod):
         logging.error(" method url error: " + methodUrl)
         return True, methodUrl, "", "", "", apiType, ""
     methodDesc = apiName + " " + str(apiDepartment) + " " + apiAuthor + " " + str(apiCreatetime)
-    methodName = getMethodName(methodUrl, apiVersionName)
+    methodName = getMethodName(methodUrl, apiVersion)
     if methodName in methodSet \
             or "-" in methodName \
             or "{" in methodName or "}" in methodName\
@@ -134,8 +133,8 @@ def parseOneMethod(oneMethod):
 # 获取方法中带有mock的url地址
 def getUrlWithMock(methodName, methodUrl, oneMethod):
     mockUrl = ""
-    if "mockUrl" in oneMethod:
-        mockUrl = oneMethod["mockUrl"]
+    if "apiSuccessMock" in oneMethod:
+        mockUrl = oneMethod["apiSuccessMock"]
     if "" == mockUrl:
         mockUrl = methodUrl
     urlMockLine = "        mockUrl.put(" + str(methodName).upper() + ", \"" + mockUrl + "\");\n"
@@ -175,8 +174,8 @@ def parseMethods(apiList):
         if isinstance(methodParams, list) and len(methodParams) > 0 \
                 and "paramType" in methodParams[0] \
                 and "children" in methodParams[0] \
-                and (methodParams[0]['paramType'] == 11 # 对象类型解析 其中的children
-                     or methodParams[0]['paramType'] == 1):# json类型解析 其中的children
+                and methodParams[0]['paramType'] == 1:# json类型解析 其中的children
+            # logging.error(" method params children: " + str(methodParams))
             methodParams = methodParams[0]['children']
         if not isinstance(methodParams, list):
             logging.error(" method params not a list: " + str(methodParams))
@@ -207,13 +206,13 @@ def parseMethods(apiList):
 
         if paramHasFile:
             realType = "    @Multipart\n    @POST"
-        methodAnnotation = realType + "(AppUrls." + str(methodName).upper() + ")\n"
+        methodAnnotation = realType + "(" + apiListUrlClass + "." + str(methodName).upper() + ")\n"
         # print("methodAnnotation ---> " + methodAnnotation)
 
         methodsTexts.append(methodNotes)
         methodsTexts.append(methodAnnotation)
         methodsTexts.append(methodLine)
-        urlTexts.append("    static final String " + str(methodName).upper() + " = \"" + methodUrl + "\";\n")
+        urlTexts.append("    String " + str(methodName).upper() + " = \"" + methodUrl + "\";\n")
         urlMapTexts.append(urlMapLine)
     return methodsTexts, urlTexts, urlMapTexts
 
@@ -226,7 +225,7 @@ def getMethodName(methodUrl, apiVersionName):
         startIndex = 0
     if lastIndex < 0:
         lastIndex = len(methodUrl)
-    methodName = methodUrl[startIndex + 1: lastIndex] + "_" + apiVersionName
+    methodName = methodUrl[startIndex + 1: lastIndex]# + "_" + apiVersionName.replace(".", "_")
     methodName = methodName.replace("/", "_").replace("-", "_").replace(".", "_")
     # print("methodUrl ---->  " + methodUrl + " " + methodName)
     return methodName
@@ -312,7 +311,7 @@ def parseParams(methodUrl, methodName, param, methodParams):
             paramRealType = "boolean"
         elif 9 == paramType: # long
             paramRealType = "Long"
-        elif 11 == paramType: #文件
+        elif 13 == paramType: # 文件
             paramRealType = FILE_TYPE
         else:
             methodSet.remove(methodName)
@@ -346,9 +345,10 @@ def getApiListFromNet():
     header = {"Content-Type": "application/json;charset=UTF-8",
               "token": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI3NzkxIn0.RyxgA4PTKxUbb2adORrXWC6kfnhTkdwz75LwvwITH0PehB66ObGL696vd257a9veSf3nPnza0ivWsY96DlGRww",
               "Authorization": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0cnVlTmFtZSI6IuadjuawuOaXuiIsInN1YiI6ImxpeW9uZ3dhbmciLCJpc3MiOiJvcC11Yy1qd3QiLCJuYW1lIjoibGl5b25nd2FuZyIsImV4cCI6MTYwNTc1MzkwMSwiaWF0IjoxNjA1NjY3NTAxLCJ1c2VySWQiOjc3OTF9.EJfLAtgtiPCncz8DUxkVz_WnI5kDM0VLSn2w-dWe-YY"}
-    paramMap = "{\"demanTreeList\":[]}"
-    # print("demanTreeIds -->" + paramMap)
+
+    paramMap = '{"projectID":"1", "dyflx":"App", "version":"%s"}' % apiVersion
     apiUrl = "http://192.168.87.178:8889/Api/getApiListExport"
+    print("request ---> " + apiUrl + "\n" + str(paramMap))
     res = requests.post(apiUrl, headers=header, data=paramMap)
     resStr = res.text
     print("response ---> " + resStr)
@@ -369,8 +369,6 @@ def parseFileName(fileName:str):
 # 解析接口数据
 def writeAppUrlClass(urlTexts, urlMapTexts):
     urlHeaderText = "package com.github.api.service;\n\n" \
-                    "import java.util.HashMap;\n" \
-                    "import java.util.Map;\n\n"\
                     "/**\n" \
                     " *\n" \
                     " * @author Lyongwang\n" \
@@ -379,16 +377,16 @@ def writeAppUrlClass(urlTexts, urlMapTexts):
                     " * <p>\n" \
                     " * Email: " + email + "\n" \
                     " */\n" \
-                    "public class "+ apiListUrlClass +" {\n" \
-                    "    static Map<String, String> mockUrl = new HashMap<>();\n"
+                    "public interface "+ apiListUrlClass +" {\n" \
+                    # "    static Map<String, String> mockUrl = new HashMap<>();\n"
     urlFooterText = "}\n"
     urlContent = ""
     urlMockContent = ""
     for urlText in urlTexts:
         urlContent = urlContent + urlText
-    for urlMockText in urlMapTexts:
-        urlMockContent = urlMockContent + urlMockText
-    classContent = urlHeaderText + urlContent + "    {\n" + urlMockContent + "    }\n" + urlFooterText
+    # for urlMockText in urlMapTexts:
+    #     urlMockContent = urlMockContent + urlMockText
+    classContent = urlHeaderText + urlContent + urlFooterText
     writeToFile(apiListUrlClass, classContent)
 
 
