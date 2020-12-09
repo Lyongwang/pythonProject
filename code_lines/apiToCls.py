@@ -1,31 +1,46 @@
 # !/usr/bin/python
 # -*- coding: UTF-8 -*-
+import json
 import logging
 import os
-import time
-
-import json
-import requests
+import re
 import sys
+import requests
 
-javaFilePath = "./src/main/java/com/github/api/service/"
-packageName = "package com.github.api.service;\n\n"
-otherImportLine = "import com.bitauto.libcommon.net.model.HttpResult;\n"
-responseClass = "HttpResult<Object>"
-author = "Lyongwang"
-email = "liyongwang@yiche.com"
-FILE_TYPE = "MultipartBody.Part"
-logFileName = 'error.log'
+from code_lines.basePlatform import AndPlatform
+from code_lines.basePlatform import BasePlatform
+from code_lines.basePlatform import IOSPlatfrom
+
+android = True#sys.argv[1]
 apiVersion = str(10.42)#sys.argv[1]
-apiListUrlClass = "AppUrls" + apiVersion.replace(".", "_")
-apiServiceClass = "AppService" + apiVersion.replace(".", "_")
+
+logFileName = 'error.log'
+
+
+platForm:BasePlatform = None
+if android:
+    platForm = AndPlatform(apiVersion)
+else:
+    platForm = IOSPlatfrom(apiVersion)
+
+print("platform--->" + platForm.getFilePath())
+
+# 生成文件的路径
+filePath = platForm.getFilePath()
+urlClassName = platForm.getUrlClassName()
+serviceClassName = platForm.getServiceName()
+fileExt = platForm.getFileExt()
+
+
+responseClass = "Observable<HttpResult<Object>>"
+FILE_TYPE = "MultipartBody.Part"
 
 
 # 写文件
 def writeToFile(fileName, fileContent):
-    if not os.path.exists(javaFilePath):
-        os.makedirs(javaFilePath)
-    fileName = javaFilePath + fileName + ".java"
+    if not os.path.exists(filePath):
+        os.makedirs(filePath)
+    fileName = filePath + fileName + fileExt
     if os.path.exists(fileName):
         os.remove(fileName)
     openFile = open(fileName, "w")
@@ -41,39 +56,19 @@ def delFile(fileName):
 
 # 解析json并生成java类
 def paseJavaClass(apiList):
-    importLines = otherImportLine + \
-                  "import retrofit2.http.Multipart;\n" \
-                  "import okhttp3.MultipartBody;\n" \
-                  "import io.reactivex.Observable;\n" \
-                  "import retrofit2.http.Field;\n" \
-                  "import retrofit2.http.FormUrlEncoded;\n" \
-                  "import retrofit2.http.GET;\n" \
-                  "import retrofit2.http.POST;\n" \
-                  "import android.support.annotation.NonNull;\n" \
-                  "import retrofit2.http.Query;\n\n"
-    classNotes = "/**" \
-                 "\n * @author " + author + \
-                                      "\n * @date " + \
-                 time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()) + \
-                 "\n * <p>" \
-                 "\n * Email: " + email +\
-                 "\n */\n"
-    # print("classAnnotation ---> \n" + classNotes)
-    classLine = "public interface " + apiServiceClass + " {\n"
-    # print("classLine ---> " + classLine)
-    methodsTexts, urlTexts, urlMapTexts = parseMethods(apiList)
-    fileContent = packageName + importLines + classNotes + classLine
+    fileContent = platForm.getServiceClassHeader()
+    methodsTexts, urlTexts = parseMethods(apiList)
     for methodText in methodsTexts:
         fileContent = fileContent + methodText
     fileContent = fileContent + "\n}"
     print("fileContent --> \n" + fileContent)
-    return fileContent, urlTexts, urlMapTexts
+    return fileContent, urlTexts
 
 
 methodSet = set([])
 
 
-# 解析excel表中的每一行(每行表示一个方法)
+# 解析每一个方法
 def parseOneMethod(oneMethod):
     apiDomain = ""
     apiCreatetime = ""
@@ -102,9 +97,9 @@ def parseOneMethod(oneMethod):
     methodUrl: str = (apiDomain + apiUrl).replace("http:", "https:")
     if methodUrl == "" or not checkUrlRestfull(methodUrl):
         logging.error(" method url error: " + methodUrl)
-        return True, methodUrl, "", "", "", apiType, ""
+        return True, methodUrl, "", "", "", apiType
     methodDesc = apiName + " " + str(apiDepartment) + " " + apiAuthor + " " + str(apiCreatetime)
-    methodName = getMethodName(methodUrl, apiVersion)
+    methodName = getMethodName(methodUrl)
     if methodName in methodSet \
             or "-" in methodName \
             or "{" in methodName or "}" in methodName\
@@ -114,7 +109,7 @@ def parseOneMethod(oneMethod):
         else:
             message = " method name error!!!"
         logging.error(message + " " + methodName + " " + methodUrl)
-        return True, methodUrl, methodDesc, methodName, "", apiType, ""
+        return True, methodUrl, methodDesc, methodName, "", apiType
     methodSet.add(methodName)
     methodParams = []
     try:
@@ -122,33 +117,19 @@ def parseOneMethod(oneMethod):
             methodParams = json.loads(apiParamJson)
     except:
         logging.error(" param is not json: " + apiParamJson)
-        return True, methodUrl, methodDesc, methodName, "", apiType, ""
+        return True, methodUrl, methodDesc, methodName, "", apiType
     apiType = apiType.strip().upper()
-    urlMockLine = getUrlWithMock(methodName, methodUrl, oneMethod)
     # print(" methodUrl ---> " + methodUrl)
-    return False, methodUrl, methodDesc, methodName, methodParams, apiType, urlMockLine
-
-
-
-# 获取方法中带有mock的url地址
-def getUrlWithMock(methodName, methodUrl, oneMethod):
-    mockUrl = ""
-    if "apiSuccessMock" in oneMethod:
-        mockUrl = oneMethod["apiSuccessMock"]
-    if "" == mockUrl:
-        mockUrl = methodUrl
-    urlMockLine = "        mockUrl.put(" + str(methodName).upper() + ", \"" + mockUrl + "\");\n"
-    return urlMockLine
+    return False, methodUrl, methodDesc, methodName, methodParams, apiType
 
 
 # 解析所有方法
 def parseMethods(apiList):
     methodsTexts = []
     urlTexts = []
-    urlMapTexts = []
     for oneMethod in apiList:
         # print("oneMethod --->" + str(oneMethod))
-        methodError, methodUrl, methodDesc, methodName, methodParams, apiType, urlMapLine = parseOneMethod(oneMethod)
+        methodError, methodUrl, methodDesc, methodName, methodParams, apiType = parseOneMethod(oneMethod)
         if methodError:
             continue
         if "GET" == apiType:
@@ -164,19 +145,10 @@ def parseMethods(apiList):
         methodNotes = "    /**" \
                       "\n    * " + methodDesc
 
-        resClassEnd = ">"
-        if responseClass == "":
-            resClassEnd = ""
-        methodLine = "    Observable<" + responseClass + resClassEnd + " " + methodName + "("
+        methodLine = "    " + responseClass + " " + methodName + "("
         paramIndex = 0
         paramHasFile = False
         paramError = False
-        if isinstance(methodParams, list) and len(methodParams) > 0 \
-                and "paramType" in methodParams[0] \
-                and "children" in methodParams[0] \
-                and methodParams[0]['paramType'] == 1:# json类型解析 其中的children
-            # logging.error(" method params children: " + str(methodParams))
-            methodParams = methodParams[0]['children']
         if not isinstance(methodParams, list):
             logging.error(" method params not a list: " + str(methodParams))
             continue
@@ -206,40 +178,38 @@ def parseMethods(apiList):
 
         if paramHasFile:
             realType = "    @Multipart\n    @POST"
-        methodAnnotation = realType + "(" + apiListUrlClass + "." + str(methodName).upper() + ")\n"
+        methodAnnotation = realType + "(" + urlClassName + "." + str(methodName).upper() + ")\n"
         # print("methodAnnotation ---> " + methodAnnotation)
 
         methodsTexts.append(methodNotes)
         methodsTexts.append(methodAnnotation)
         methodsTexts.append(methodLine)
         urlTexts.append("    String " + str(methodName).upper() + " = \"" + methodUrl + "\";\n")
-        urlMapTexts.append(urlMapLine)
-    return methodsTexts, urlTexts, urlMapTexts
+    return methodsTexts, urlTexts
 
 
 # 获取方法名称
-def getMethodName(methodUrl, apiVersionName):
+def getMethodName(methodUrl):
     lastIndex = methodUrl.find("?")
     startIndex = findNSubStr(methodUrl, "/", 3)
     if startIndex < 0:
         startIndex = 0
     if lastIndex < 0:
         lastIndex = len(methodUrl)
-    methodName = methodUrl[startIndex + 1: lastIndex]# + "_" + apiVersionName.replace(".", "_")
+    methodName = methodUrl[startIndex + 1: lastIndex]
     methodName = methodName.replace("/", "_").replace("-", "_").replace(".", "_")
     # print("methodUrl ---->  " + methodUrl + " " + methodName)
     return methodName
 
 
+# 检查是否为正常url (以http/https开头 包含path)
 def checkUrlRestfull(url):
-    if not (url.startswith("http://") or url.startswith("https://")):
-        return False
-
-    if not "/" in url[url.find("://") + 3:]:
-        return False
-    return True
+    if re.match(r'^https?:/{2}\w.+$', url):
+        return True
+    return False
 
 
+# 检查方法中是否包含中文
 def check_contain_chinese(check_str:str):
     for ch in check_str:
         if u'\u4e00' <= ch <= u'\u9fff':
@@ -262,6 +232,7 @@ def findNSubStr(str, substr, i):
     return count - 1
 
 
+# 是否是数字
 def is_number(s):
     try:
         float(s)
@@ -279,13 +250,14 @@ def is_number(s):
     return False
 
 
-# 解析参数
+# 参数名是否合法
 def isInvdidate(paramName):
     if paramName == "" or "\"" in paramName or is_number(paramName):
         return False
     return True
 
 
+# 解析参数
 def parseParams(methodUrl, methodName, param, methodParams):
     paramNotNull = ""
     paramDesc = ""
@@ -326,21 +298,7 @@ def parseParams(methodUrl, methodName, param, methodParams):
     return False, paramDesc, paramName, paramRealType, paramNotNull
 
 
-# 生成全部服务文件
-def genAllServiceFile(fileNames):
-    interfaces = ""
-    index = 0
-    for className in fileNames:
-        if index > 0:
-            interfaces = interfaces + ", "
-        interfaces = interfaces + className
-        index = index + 1
-    fileDesc = "/**\n* 全部服务\n*/\n"
-    fileContent = packageName + fileDesc + "public interface AllService extends " + interfaces + " {}"
-    # print("fileContent --> \n" + fileContent)
-    writeToFile("AllService", fileContent)
-
-
+# 获取api列表
 def getApiListFromNet():
     header = {"Content-Type": "application/json;charset=UTF-8",
               "token": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI3NzkxIn0.RyxgA4PTKxUbb2adORrXWC6kfnhTkdwz75LwvwITH0PehB66ObGL696vd257a9veSf3nPnza0ivWsY96DlGRww",
@@ -358,49 +316,17 @@ def getApiListFromNet():
     return response["data"]
 
 
-# 解析文件名
-def parseFileName(fileName:str):
-    # fileName = fileName[fileName.rfind("_") + 1:fileName.rfind(".")].replace(".", "_").upper()
-    # if index > 0:
-    #     fileName = fileName + "_" + sheetName
-    return "V" + fileName.replace(".", "_")
-
-
-# 解析接口数据
-def writeAppUrlClass(urlTexts, urlMapTexts):
-    urlHeaderText = "package com.github.api.service;\n\n" \
-                    "/**\n" \
-                    " *\n" \
-                    " * @author Lyongwang\n" \
-                    " * @date " \
-                    + time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()) + "\n" \
-                    " * <p>\n" \
-                    " * Email: " + email + "\n" \
-                    " */\n" \
-                    "public interface "+ apiListUrlClass +" {\n" \
-                    # "    static Map<String, String> mockUrl = new HashMap<>();\n"
-    urlFooterText = "}\n"
-    urlContent = ""
-    urlMockContent = ""
-    for urlText in urlTexts:
-        urlContent = urlContent + urlText
-    # for urlMockText in urlMapTexts:
-    #     urlMockContent = urlMockContent + urlMockText
-    classContent = urlHeaderText + urlContent + urlFooterText
-    writeToFile(apiListUrlClass, classContent)
-
-
-
 # 解析所有数据
 def parseData():
     apiList = getApiListFromNet()
     # 解析java类
-    fileContent, urlTexts, urlMapTexts = paseJavaClass(apiList)
-    # 写文件
-    writeToFile(apiServiceClass, fileContent)
-    # 写带有mock url切换的类
-    writeAppUrlClass(urlTexts, urlMapTexts)
+    fileContent, urlTexts = paseJavaClass(apiList)
+    # 写url地址的类
+    writeToFile(urlClassName, platForm.getUrlClassContent(urlTexts))
+    # 写服务类
+    writeToFile(serviceClassName, fileContent)
 
+# 删除日志文件
 delFile(logFileName)
 logging.basicConfig(level=logging.DEBUG,#控制台打印的日志级别
                     filename='error.log',
