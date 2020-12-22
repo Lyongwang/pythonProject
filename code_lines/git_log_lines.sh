@@ -12,8 +12,12 @@ list_alldir(){
 #                git log --format='%ae' | sort -u | while read email;
 #                do
 #                   echo "姓名:$email";
-                    git log --author="$email" --pretty=tformat: --since =='2020-08-01 00:00:00' --until='2020-08-31 23:59:59' --numstat | awk '{add += $1; subs += $2; loc += $1 - $2 } END { printf "%s,%s,%s,", add, subs, loc}' -;
-                    echo "$file2"
+#                    git log --author="$email" --pretty=tformat: --since =='1990-01-01 00:00:00' --until='2020-12-15 23:59:59' --numstat |grep "\(|.java\|.gradle\|.xml\|.properties\|.pro\|.gitignore\|.py\|.sh\)$"| awk '{add += $1; subs += $2; loc += $1 - $2 } END { printf "%s,%s,%s,", add, subs, loc}' -;
+                    git log --author="$email" --pretty=tformat: --since =='1990-01-01 00:00:00' --until='2020-12-15 23:59:59' --numstat -- . ":(exclude).git/" ":(exclude)pagetime/mappingtest.txt" ":(exclude)mapping.txt" ":(exclude)pagetime/mapping.txt" ":(exclude)pagetime/mapping3.txt" ":(exclude)oneTest/mapping.txt" | awk '{add += $1; subs += $2; loc += $1 - $2 } END { printf "%s",loc}' -;
+#                    git log --author="$email" --pretty=tformat: --since =='1990-01-01 00:00:00' --until='2020-12-15 23:59:59' --numstat | awk '{add += $1; subs += $2; loc += $1 - $2 } END { printf "%s",loc}' -;
+                    echo "#$file2"
+#                    find . "(" -name "*.*" ")" -print | xargs wc -l
+#                    echo "$file2"
 #                    echo "$email";
 #                done
             fi  
@@ -21,7 +25,7 @@ list_alldir(){
     done  
 }  
   
-list_alldir /Users/lxiansheng/Downloads/temp-project
+list_alldir /Users/lxiansheng/Downloads/temp-project/RN
 
 
 # cd /Users/xuxiaolong/Downloads/temp-project/BFCommonLib

@@ -5,10 +5,12 @@ import os
 import shutil
 import sys
 
+group = 'and'
+
 def read_project(project_url, project_branch):
     try:
-        root_name = "/Users/lxiansheng/Downloads/temp-project"
-        user="liyongwang:lyw.111@"
+        root_name = "/Users/lxiansheng/Downloads/temp-project/"+group
+        user="liyongwang:lyw.222@"
         project_url = project_url.replace("http://", "http://" + user)
         if not os.path.exists(root_name):
             os.makedirs(root_name)
@@ -40,17 +42,17 @@ def read_project(project_url, project_branch):
             return project_name
 
     except Exception as e:
-        print e
+        print(e)
         # raise e
 
 
 if __name__ == "__main__":
     count=0
-    read_lines = open("git_group_project.txtios").readlines()
+    read_lines = open("git_group_project.txt" + group).readlines()
 
     for line in read_lines:
         split = line.split("\t")
-        print split[0] + " -- " + split[1]
+        print (split[0] + " -- " + split[1])
         project_url = split[0].replace("\n","")
         project_branch = split[1].replace("\n","")
         read_project( project_url, project_branch)

@@ -43,7 +43,7 @@ def get_project_list(index, file):
 
 
 def writeToFile(file, project):
-    print "write to file" + str(project['description'])
+    print ("write to file" + str(project['description']))
     file.write(project['http_url_to_repo'] + '#' +
                # (str(project['description']).replace("\n", "").replace("\r", "")) + '#' +
                # project['web_url'] + '#' +

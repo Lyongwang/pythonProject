@@ -3,10 +3,10 @@ import requests
 import sys
 import time
 
-url = "http://gitlab.bitautotech.com/api/v4/groups/2554/projects?private_token=S2inDpo1mCg-sf3FZaSb&per_page=100&page=%d"
+url = "http://gitlab.bitautotech.com/api/v4/groups/4413/projects?private_token=S2inDpo1mCg-sf3FZaSb&per_page=100&page=%d"
 
-startTimeStr = "2020-07-01"
-endTimeStr = "2020-08-01"
+startTimeStr = "1990-01-01"
+endTimeStr = "2020-12-15"
 
 def needWrite(updateTimeStr, createTimeStr):
     # 2020-08-03T17:45:37.000+08:00
@@ -43,7 +43,7 @@ def get_project_list(index, file):
 
 
 def writeToFile(file, project):
-    print "write to file" + str(project['description'])
+    print ("write to file" + str(project['description']))
     file.write(project['http_url_to_repo'] + '#' +
                # (str(project['description']).replace("\n", "").replace("\r", "")) + '#' +
                # project['web_url'] + '#' +
@@ -56,9 +56,9 @@ def writeToFile(file, project):
 
 
 if __name__ == '__main__':
-    reload(sys)
-    sys.setdefaultencoding('utf8')
-    txtName = "git_group_project.txt"
+    # reload(sys)
+    # sys.setdefaultencoding('utf8')
+    txtName = "git_group_project.txtRN"
     f = open(txtName, "a+")
     get_project_list(1, f)
     f.close()

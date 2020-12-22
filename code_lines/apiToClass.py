@@ -12,7 +12,7 @@ from code_lines.basePlatform import BasePlatform
 from code_lines.basePlatform import IOSPlatfrom
 
 android = True#sys.argv[1]
-apiVersion = str(10.42)#sys.argv[1]
+apiVersion = str(10.44)#sys.argv[1]
 
 logFileName = 'error.log'
 
@@ -78,6 +78,7 @@ def parseOneMethod(oneMethod):
     apiAuthor = ""
     apiType = ""
     apiParamJson = ""
+    apiDoc = ""
     if "apiDomainName" in oneMethod:
         apiDomain = oneMethod["apiDomainName"]
     if "apiURI" in oneMethod:
@@ -94,11 +95,13 @@ def parseOneMethod(oneMethod):
         apiCreatetime = oneMethod["updateTime"]
     if "apiParams" in oneMethod:
         apiParamJson = oneMethod["apiParams"]
+    if "apiDocLink" in oneMethod:
+        apiDoc = oneMethod["apiDocLink"]
     methodUrl: str = (apiDomain + apiUrl).replace("http:", "https:")
     if methodUrl == "" or not checkUrlRestfull(methodUrl):
         logging.error(" method url error: " + methodUrl)
         return True, methodUrl, "", "", "", apiType
-    methodDesc = apiName + " " + str(apiDepartment) + " " + apiAuthor + " " + str(apiCreatetime)
+    methodDesc = apiName + " " + str(apiDepartment) + " " + apiAuthor + " " + str(apiCreatetime) + " " + apiDoc
     methodName = getMethodName(methodUrl)
     if methodName in methodSet \
             or "-" in methodName \

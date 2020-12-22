@@ -1,6 +1,6 @@
-1、使用 git_group_url.py 先获取某个group（需要 groupId）下面的所有仓库地址。
+1、使用 git_group_url.py 先获取某个group（需要 group_id）下面的所有仓库地址。
 	1）根据 git 权限不同，获取到的组不一样，默认使用大老师 git 的 token 来操作。
-	2）获取到数据后，查找 groupId（Android：2554， iOS：2555）
+	2）获取到数据后，查找 groupId（Android：2554， iOS：2555, RN: 4413）
 	3）放入 excel主，让每个人修改仓库的主要分支。
 2、使用 git_pull_porject.py 
 	1）将所有项目拉取到某个目录下，它需要单独讲取一个文件，里面放了所有的 git地址和分支，需要空格分开。
