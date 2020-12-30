@@ -119,7 +119,7 @@ def parseOneMethod(oneMethod):
         if "" != apiParamJson:
             methodParams = json.loads(apiParamJson)
     except:
-        logging.error(" param is not json: " + apiParamJson)
+        logging.error(" param is not json: " + str(apiParamJson))
         return True, methodUrl, methodDesc, methodName, "", apiType
     apiType = apiType.strip().upper()
     # print(" methodUrl ---> " + methodUrl)
@@ -308,7 +308,7 @@ def getApiListFromNet():
               "Authorization": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0cnVlTmFtZSI6IuadjuawuOaXuiIsInN1YiI6ImxpeW9uZ3dhbmciLCJpc3MiOiJvcC11Yy1qd3QiLCJuYW1lIjoibGl5b25nd2FuZyIsImV4cCI6MTYwNTc1MzkwMSwiaWF0IjoxNjA1NjY3NTAxLCJ1c2VySWQiOjc3OTF9.EJfLAtgtiPCncz8DUxkVz_WnI5kDM0VLSn2w-dWe-YY"}
 
     paramMap = '{"projectID":"1", "dyflx":"App", "version":"%s"}' % apiVersion
-    apiUrl = "http://192.168.87.178:8889/Api/getApiListExport"
+    apiUrl = "http://10.168.49.152:8889/Api/getApiListExport"
     print("request ---> " + apiUrl + "\n" + str(paramMap))
     res = requests.post(apiUrl, headers=header, data=paramMap)
     resStr = res.text
